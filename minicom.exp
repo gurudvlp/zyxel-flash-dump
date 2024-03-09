@@ -1,0 +1,39 @@
+#!/usr/bin/expect -f
+#
+# Originally written to dump the contents of flash on a Zyxel GS1900-24HPv2.
+# This could pretty easily be adapted to dump other ranges of memory.
+
+
+# Set variables
+set address 0xb4060000
+set end_address 0xb415ffff
+set jffs_raw "jffs2_raw.dump"
+set usbtty "/dev/ttyUSB0"
+
+# Open minicom
+spawn bash -c "time minicom -b 115200 -D $usbtty | tee $jffs_raw"
+
+# Wait for minicom to start
+sleep 1
+
+# Send command to enter minicom's command mode
+send "\r"
+expect "RTL838x#"
+sleep 1
+
+# Loop until end address is reached
+while {$address <= $end_address} {
+    # Send memory dump command.  Make sure that the address is formatted
+    # as a hex number.  This switch will crash if a decimal number is used.
+    send "md [format %x $address]\r"
+    
+    # Wait for command output
+    expect "RTL838x#"
+    
+    # Increment address
+    set address [expr {$address + 0x100}]
+}
+
+
+# Wait for minicom to exit
+expect eof

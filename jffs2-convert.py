@@ -1,52 +1,35 @@
 #!/usr/bin/python
 import re
 
-output_file = 'jffs2_cfg.img'
+output_file = 'jffs2_cfg2.img'
 
-loops = 0
 binary_data = b''
-escape_sequence_pattern = re.compile(r'\x1b[^m]*m')
-
-def remove_escape_sequences(input_string):
-	clean_string = escape_sequence_pattern.sub('', input_string)
-	clean_string = clean_string.replace("[23;120H [24;1H", "")
-	return clean_string
-	
-def remove_non_english(input_string):
-	return re.sub(r'[^\x00-\x7F]+', '', input_string)
-
-
+hex_pattern = re.compile(r'[0-9a-fA-F]{8}')
 
 with open("jffs2_raw.dump", "r") as file:
-	for line in file:
-		line = remove_escape_sequences(line)
-		line = line.strip()
-		
-		if len(line) < 45:
-			continue
-			
-		# Remove the address portion of the response
-		line = line[10:]
-		
-		# Remove everything except for the hex for the data
-		line = line[:35]
-		
-		# Remove the spaces in the hex data
-		line = line.replace(" ", "")
-		
-		# Convert to binary
-		binary_data += bytes.fromhex(line)
-		
-		loops += 1
-		print(line.strip())
-		
-		
-		#if loops >= 50:
-		#	break
-			
-
+    for line in file:
+        # Check if the line contains "RTL838x# md", if so, skip
+        if "RTL838x# md" in line:
+            continue
+        
+        # Find the index of ":" to locate the end of the memory address
+        address_end = line.find(":")
+        if address_end == -1:
+            continue
+        
+        # Skip any lines that are too short to contain data
+        if len(line) < 45:
+            continue
+            
+        # Extract the part of the line after the memory address
+        hex_data = line[address_end+1:]
+        
+        # Extract hexadecimal numbers from the line
+        hex_values = re.findall(hex_pattern, hex_data)
+        
+        # Convert to binary and concatenate
+        for hex_value in hex_values:
+            binary_data += bytes.fromhex(hex_value)
+        
 with open(output_file, 'wb') as file:
-	file.write(binary_data)
-		
-
-		
+    file.write(binary_data)
